@@ -139,7 +139,22 @@
   transition: border-color 0.2s;
 }
 
+.form-field select {
+  padding: 10px 14px;
+  border: 1px solid #d1d7db;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
 .form-field input:focus {
+  outline: none;
+  border-color: #00a884;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.1);
+}
+
+.form-field select:focus {
   outline: none;
   border-color: #00a884;
   box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.1);

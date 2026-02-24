@@ -19,14 +19,18 @@ function Login() {
     setLoading(true);
     setError('');
 
-    const result = login(credentials.userId, credentials.password);
-    
-    if (result.success) {
-      navigate('/members');
-    } else {
-      setError(result.error);
+    try {
+      const result = await login(credentials.userId, credentials.password);
+
+      if (result.success) {
+        navigate('/members');
+      } else {
+        setError(result.error || 'Login failed');
+      }
+    } catch (err) {
+      setError(err.message || 'Login failed');
     }
-    
+
     setLoading(false);
   };
 

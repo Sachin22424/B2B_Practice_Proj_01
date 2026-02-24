@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByMemberId(String memberId);
 
+    boolean existsByMemberIdAndIdNot(String memberId, Long id);
+
     Page<Member> findByNameContainingIgnoreCaseOrMemberIdContainingIgnoreCaseOrEmailContainingIgnoreCase(
             String name,
             String memberId,

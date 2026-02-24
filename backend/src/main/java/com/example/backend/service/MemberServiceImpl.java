@@ -57,9 +57,7 @@ public class MemberServiceImpl implements MemberService {
             throw new ConflictException("Member ID already exists");
         }
 
-        if (member.getBillDue() != null && member.getBillDue().isBefore(LocalDate.now())) {
-            throw new BadRequestException("Bill due date cannot be in the past");
-        }
+        validateActiveDates(member);
 
         return memberRepository.save(member);
     }
@@ -69,13 +67,18 @@ public class MemberServiceImpl implements MemberService {
         Member existingMember = memberRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Member not found with id: " + id));
 
-        if (member.getBillDue() != null && member.getBillDue().isBefore(LocalDate.now())) {
-            throw new BadRequestException("Bill due date cannot be in the past");
+        if (memberRepository.existsByMemberIdAndIdNot(member.getMemberId(), id)) {
+            throw new ConflictException("Member ID already exists");
         }
 
+        validateActiveDates(member);
+
         existingMember.setName(member.getName());
+        existingMember.setMemberId(member.getMemberId());
         existingMember.setEmail(member.getEmail());
-        existingMember.setBillDue(member.getBillDue());
+        existingMember.setActiveFrom(member.getActiveFrom());
+        existingMember.setActiveTill(member.getActiveTill());
+        existingMember.setStatus(member.getStatus());
 
         return memberRepository.save(existingMember);
     }
@@ -87,5 +90,20 @@ public class MemberServiceImpl implements MemberService {
         }
 
         memberRepository.deleteById(id);
+    }
+
+    private void validateActiveDates(Member member) {
+        if (member.getActiveFrom() == null || member.getActiveTill() == null) {
+            throw new BadRequestException("Active from and active till dates are required");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (member.getActiveTill().isBefore(today)) {
+            throw new BadRequestException("Active till date cannot be in the past");
+        }
+
+        if (member.getActiveTill().isBefore(member.getActiveFrom())) {
+            throw new BadRequestException("Active till date must be greater than or equal to active from date");
+        }
     }
 }

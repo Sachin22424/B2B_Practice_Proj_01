@@ -23,8 +23,14 @@ function Members() {
     name: '',
     memberId: '',
     email: '',
-    billDue: '',
+    activeFrom: '',
+    activeTill: '',
+    status: true,
   });
+
+  const todayString = new Date().toISOString().split('T')[0];
+  const activeTillMinDate =
+    form.activeFrom && form.activeFrom > todayString ? form.activeFrom : todayString;
 
   const navigate = useNavigate();
 
@@ -37,7 +43,7 @@ function Members() {
   useEffect(() => {
     const timerId = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm.trim());
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timerId);
   }, [searchTerm]);
@@ -66,7 +72,11 @@ function Members() {
   }, [fetchMembers]);
 
   const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: name === 'status' ? value === 'true' : value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -79,7 +89,7 @@ function Members() {
         await memberService.createMember(form);
       }
       await fetchMembers();
-      setForm({ name: '', memberId: '', email: '', billDue: '' });
+      setForm({ name: '', memberId: '', email: '', activeFrom: '', activeTill: '', status: true });
       setShowForm(false);
       setEditingId(null);
       setError(null);
@@ -95,7 +105,9 @@ function Members() {
       name: member.name,
       memberId: member.memberId,
       email: member.email,
-      billDue: member.billDue,
+      activeFrom: member.activeFrom,
+      activeTill: member.activeTill,
+      status: member.status,
     });
     setEditingId(member.id);
     setShowForm(true);
@@ -103,7 +115,7 @@ function Members() {
   }, []);
 
   const handleCancelEdit = () => {
-    setForm({ name: '', memberId: '', email: '', billDue: '' });
+    setForm({ name: '', memberId: '', email: '', activeFrom: '', activeTill: '', status: true });
     setShowForm(false);
     setEditingId(null);
   };
@@ -129,12 +141,27 @@ function Members() {
       { field: 'memberId', headerName: 'Member ID', flex: 1, minWidth: 130 },
       { field: 'email', headerName: 'Email', flex: 1.6, minWidth: 200 },
       {
-        field: 'billDue',
-        headerName: 'Bill Due Date',
+        field: 'activeFrom',
+        headerName: 'Active From',
         flex: 1,
         minWidth: 150,
         valueFormatter: (params) =>
           params.value ? new Date(params.value).toLocaleDateString() : '',
+      },
+      {
+        field: 'activeTill',
+        headerName: 'Active Till',
+        flex: 1,
+        minWidth: 150,
+        valueFormatter: (params) =>
+          params.value ? new Date(params.value).toLocaleDateString() : '',
+      },
+      {
+        field: 'status',
+        headerName: 'Status',
+        flex: 0.8,
+        minWidth: 120,
+        valueFormatter: (params) => (params.value ? 'Active' : 'Disable'),
       },
       {
         field: 'actions',
@@ -225,7 +252,6 @@ function Members() {
                     placeholder="B2B-004"
                     required
                     minLength="3"
-                    disabled={editingId !== null}
                   />
                 </div>
               </div>
@@ -243,15 +269,40 @@ function Members() {
                   />
                 </div>
                 <div className="form-field">
-                  <label>Bill Due Date</label>
+                  <label>Active From</label>
                   <input
-                    name="billDue"
+                    name="activeFrom"
                     type="date"
-                    value={form.billDue}
+                    value={form.activeFrom}
                     onChange={handleChange}
-                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-field">
+                  <label>Active Till</label>
+                  <input
+                    name="activeTill"
+                    type="date"
+                    value={form.activeTill}
+                    onChange={handleChange}
+                    min={activeTillMinDate}
+                    required
+                  />
+                </div>
+                <div className="form-field">
+                  <label>Status</label>
+                  <select
+                    name="status"
+                    value={String(form.status)}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Disable</option>
+                  </select>
                 </div>
               </div>
 

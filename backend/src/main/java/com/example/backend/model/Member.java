@@ -2,9 +2,9 @@ package com.example.backend.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -36,6 +36,15 @@ public class Member {
     private String email;
     
     @Column(nullable = false)
-    @FutureOrPresent(message = "Bill due date must be today or in the future")
-    private LocalDate billDue;
+    @NotNull(message = "Active from date is required")
+    private LocalDate activeFrom;
+
+    @Column(nullable = false)
+    @NotNull(message = "Active till date is required")
+    @FutureOrPresent(message = "Active till date must be today or in the future")
+    private LocalDate activeTill;
+
+    @Column(nullable = false)
+    @NotNull(message = "Status is required")
+    private Boolean status;
 }
