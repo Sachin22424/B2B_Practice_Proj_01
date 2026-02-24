@@ -135,6 +135,26 @@ function Members() {
     }
   }, [fetchMembers]);
 
+  const handleToggleStatus = useCallback(async (member) => {
+    try {
+      setLoading(true);
+      await memberService.updateMember(member.id, {
+        name: member.name,
+        memberId: member.memberId,
+        email: member.email,
+        activeFrom: member.activeFrom,
+        activeTill: member.activeTill,
+        status: !member.status,
+      });
+      await fetchMembers();
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchMembers]);
+
   const columns = useMemo(
     () => [
       { field: 'name', headerName: 'Name', flex: 1.3, minWidth: 160 },
@@ -160,8 +180,22 @@ function Members() {
         field: 'status',
         headerName: 'Status',
         flex: 0.8,
-        minWidth: 120,
-        valueFormatter: (params) => (params.value ? 'Active' : 'Disable'),
+        minWidth: 130,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const isActive = Boolean(params.row.status);
+          return (
+            <button
+              type="button"
+              onClick={() => handleToggleStatus(params.row)}
+              className={`btn-status ${isActive ? 'btn-status-disable' : 'btn-status-enable'}`}
+              disabled={loading}
+            >
+              {isActive ? 'Disable' : 'Enable'}
+            </button>
+          );
+        },
       },
       {
         field: 'actions',
@@ -189,7 +223,7 @@ function Members() {
         ),
       },
     ],
-    [handleDelete, handleEdit, loading]
+    [handleDelete, handleEdit, handleToggleStatus, loading]
   );
 
   return (

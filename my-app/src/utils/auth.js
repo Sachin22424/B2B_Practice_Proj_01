@@ -39,6 +39,10 @@ export const login = async (userId, password) => {
       return { success: false, error: 'User ID does not exist' };
     }
 
+    if (!member.status) {
+      return { success: false, error: 'User is disabled. Please contact admin' };
+    }
+
     localStorage.setItem(AUTH_KEY, 'true');
     localStorage.setItem(AUTH_USER_KEY, member.memberId);
     return { success: true };
