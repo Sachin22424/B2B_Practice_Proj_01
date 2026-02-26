@@ -37,6 +37,11 @@ public class MemberController {
     public ResponseEntity<Member> getMemberById(@PathVariable Long id) {
         return ResponseEntity.ok(memberService.getMemberById(id));
     }
+
+    @GetMapping("/by-member-id/{memberId}")
+    public ResponseEntity<Member> getMemberByMemberId(@PathVariable String memberId) {
+        return ResponseEntity.ok(memberService.getMemberByMemberId(memberId));
+    }
     
     @PutMapping("/{id}")
     public ResponseEntity<Member> updateMember(@PathVariable Long id, @Valid @RequestBody Member member) {

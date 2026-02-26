@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataGrid } from '@mui/x-data-grid';
-import { isAuthenticated } from '../utils/auth';
-import { memberService } from '../services/memberService';
+import { getCurrentUserRoles, isAuthenticated } from '../utils/auth';
+import { useMembers } from '../hooks/useMembers';
+import { formatDate } from '../utils/date';
+import { hasPermission, PERMISSIONS } from '../utils/rbac';
 import Navbar from '../components/Navbar';
 import './Members.css';
 
+const INITIAL_FORM = {
+  name: '',
+  memberId: '',
+  email: '',
+  activeFrom: '',
+  activeTill: '',
+  status: true,
+  roles: ['AUDITOR'],
+};
+
 function Members() {
-  const [members, setMembers] = useState([]);
-  const [totalRows, setTotalRows] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -19,26 +27,42 @@ function Members() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({
-    name: '',
-    memberId: '',
-    email: '',
-    activeFrom: '',
-    activeTill: '',
-    status: true,
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
 
   const todayString = new Date().toISOString().split('T')[0];
   const activeTillMinDate =
     form.activeFrom && form.activeFrom > todayString ? form.activeFrom : todayString;
 
   const navigate = useNavigate();
+  const authenticated = isAuthenticated();
+  const currentUserRoles = getCurrentUserRoles();
+
+  const canCreateMember = hasPermission(currentUserRoles, PERMISSIONS.MEMBER_CREATE);
+  const canUpdateMember = hasPermission(currentUserRoles, PERMISSIONS.MEMBER_UPDATE);
+  const canDeleteMember = hasPermission(currentUserRoles, PERMISSIONS.MEMBER_DELETE);
+  const canToggleStatus = hasPermission(currentUserRoles, PERMISSIONS.MEMBER_TOGGLE_STATUS);
+
+  const {
+    members,
+    totalRows,
+    loading,
+    error,
+    createMember,
+    updateMember,
+    deleteMember,
+    toggleMemberStatus,
+  } = useMembers({
+    page: paginationModel.page,
+    pageSize: paginationModel.pageSize,
+    search: debouncedSearchTerm,
+    enabled: authenticated,
+  });
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (!authenticated) {
       navigate('/');
     }
-  }, [navigate]);
+  }, [authenticated, navigate]);
 
   useEffect(() => {
     const timerId = setTimeout(() => {
@@ -48,31 +72,9 @@ function Members() {
     return () => clearTimeout(timerId);
   }, [searchTerm]);
 
-  const fetchMembers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await memberService.getMembers({
-        page: paginationModel.page,
-        pageSize: paginationModel.pageSize,
-        search: debouncedSearchTerm,
-      });
-      setMembers(data.content || []);
-      setTotalRows(data.totalElements || 0);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearchTerm, paginationModel.page, paginationModel.pageSize]);
-
-  useEffect(() => {
-    if (!isAuthenticated()) return;
-    fetchMembers();
-  }, [fetchMembers]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     setForm(prev => ({
       ...prev,
       [name]: name === 'status' ? value === 'true' : value,
@@ -81,22 +83,20 @@ function Members() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      setLoading(true);
-      if (editingId) {
-        await memberService.updateMember(editingId, form);
-      } else {
-        await memberService.createMember(form);
-      }
-      await fetchMembers();
-      setForm({ name: '', memberId: '', email: '', activeFrom: '', activeTill: '', status: true });
+    if (!canCreateMember && !canUpdateMember) return;
+
+    const payload = editingId
+      ? form
+      : { ...form, roles: ['AUDITOR'] };
+
+    const success = editingId
+      ? await updateMember(editingId, payload)
+      : await createMember(payload);
+
+    if (success) {
+      setForm(INITIAL_FORM);
       setShowForm(false);
       setEditingId(null);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -108,6 +108,7 @@ function Members() {
       activeFrom: member.activeFrom,
       activeTill: member.activeTill,
       status: member.status,
+      roles: Array.isArray(member.roles) && member.roles.length > 0 ? member.roles : ['AUDITOR'],
     });
     setEditingId(member.id);
     setShowForm(true);
@@ -115,45 +116,21 @@ function Members() {
   }, []);
 
   const handleCancelEdit = () => {
-    setForm({ name: '', memberId: '', email: '', activeFrom: '', activeTill: '', status: true });
+    setForm(INITIAL_FORM);
     setShowForm(false);
     setEditingId(null);
   };
 
-  const handleDelete = useCallback(async (id) => {
+  const handleDeleteAction = useCallback(async (id) => {
+    if (!canDeleteMember) return;
     if (!window.confirm('Are you sure you want to delete this member?')) return;
-    
-    try {
-      setLoading(true);
-      await memberService.deleteMember(id);
-      await fetchMembers();
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchMembers]);
+    await deleteMember(id);
+  }, [canDeleteMember, deleteMember]);
 
   const handleToggleStatus = useCallback(async (member) => {
-    try {
-      setLoading(true);
-      await memberService.updateMember(member.id, {
-        name: member.name,
-        memberId: member.memberId,
-        email: member.email,
-        activeFrom: member.activeFrom,
-        activeTill: member.activeTill,
-        status: !member.status,
-      });
-      await fetchMembers();
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchMembers]);
+    if (!canToggleStatus) return;
+    await toggleMemberStatus(member);
+  }, [canToggleStatus, toggleMemberStatus]);
 
   const columns = useMemo(
     () => [
@@ -165,16 +142,14 @@ function Members() {
         headerName: 'Active From',
         flex: 1,
         minWidth: 150,
-        valueFormatter: (params) =>
-          params.value ? new Date(params.value).toLocaleDateString() : '',
+        renderCell: (params) => formatDate(params.row.activeFrom),
       },
       {
         field: 'activeTill',
         headerName: 'Active Till',
         flex: 1,
         minWidth: 150,
-        valueFormatter: (params) =>
-          params.value ? new Date(params.value).toLocaleDateString() : '',
+        renderCell: (params) => formatDate(params.row.activeTill),
       },
       {
         field: 'status',
@@ -190,10 +165,33 @@ function Members() {
               type="button"
               onClick={() => handleToggleStatus(params.row)}
               className={`btn-status ${isActive ? 'btn-status-disable' : 'btn-status-enable'}`}
-              disabled={loading}
+              disabled={loading || !canToggleStatus}
             >
               {isActive ? 'Disable' : 'Enable'}
             </button>
+          );
+        },
+      },
+      {
+        field: 'roles',
+        headerName: 'Roles',
+        flex: 1.2,
+        minWidth: 220,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const roleValues = Array.isArray(params.row.roles) && params.row.roles.length > 0
+            ? params.row.roles
+            : ['AUDITOR'];
+
+          return (
+            <div className="roles-row">
+              {roleValues.map((role) => (
+                <span key={`${params.row.id}-${role}`} className="role-pill">
+                  {role}
+                </span>
+              ))}
+            </div>
           );
         },
       },
@@ -208,14 +206,14 @@ function Members() {
             <button
               onClick={() => handleEdit(params.row)}
               className="btn-edit"
-              disabled={loading}
+              disabled={loading || !canUpdateMember}
             >
               Edit
             </button>
             <button
-              onClick={() => handleDelete(params.row.id)}
+              onClick={() => handleDeleteAction(params.row.id)}
               className="btn-delete"
-              disabled={loading}
+              disabled={loading || !canDeleteMember}
             >
               Delete
             </button>
@@ -223,7 +221,15 @@ function Members() {
         ),
       },
     ],
-    [handleDelete, handleEdit, handleToggleStatus, loading]
+    [
+      canDeleteMember,
+      canToggleStatus,
+      canUpdateMember,
+      handleDeleteAction,
+      handleEdit,
+      handleToggleStatus,
+      loading,
+    ]
   );
 
   return (
@@ -247,18 +253,20 @@ function Members() {
               className="search-input"
             />
           </div>
-          <button 
-            onClick={() => {
-              if (showForm) {
-                handleCancelEdit();
-              } else {
-                setShowForm(true);
-              }
-            }} 
-            className="btn-primary"
-          >
-            {showForm ? 'Cancel' : '+ Add Member'}
-          </button>
+          {canCreateMember && (
+            <button
+              onClick={() => {
+                if (showForm) {
+                  handleCancelEdit();
+                } else {
+                  setShowForm(true);
+                }
+              }}
+              className="btn-primary"
+            >
+              {showForm ? 'Cancel' : '+ Add Member'}
+            </button>
+          )}
         </div>
 
         {showForm && (

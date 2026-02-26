@@ -4,12 +4,14 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Entity
 @Table(name = "members")
@@ -47,4 +49,11 @@ public class Member {
     @Column(nullable = false)
     @NotNull(message = "Status is required")
     private Boolean status;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "member_roles", joinColumns = @JoinColumn(name = "member_id"))
+    @Column(name = "role", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @NotEmpty(message = "At least one role is required")
+    private Set<Role> roles;
 }

@@ -1,0 +1,48 @@
+.finance-page-container {
+  min-height: 100vh;
+  background: #f0f2f5;
+  display: flex;
+}
+
+.finance-main-content {
+  flex: 1;
+  margin-left: 240px;
+  transition: margin-left 0.3s;
+  min-height: 100vh;
+}
+
+.finance-main-content.sidebar-collapsed {
+  margin-left: 60px;
+}
+
+.finance-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.finance-card {
+  background: #fff;
+  border: 1px solid #d1d7db;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.finance-editor {
+  width: 100%;
+  min-height: 140px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #d1d7db;
+  border-radius: 8px;
+}
+
+.finance-btn {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #00a884;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}

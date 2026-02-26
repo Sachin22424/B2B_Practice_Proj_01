@@ -12,6 +12,8 @@ public interface MemberService {
 
     Member getMemberById(Long id);
 
+    Member getMemberByMemberId(String memberId);
+
     Member createMember(Member member);
 
     Member updateMember(Long id, Member member);

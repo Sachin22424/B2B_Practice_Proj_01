@@ -4,6 +4,7 @@ import com.example.backend.exception.BadRequestException;
 import com.example.backend.exception.ConflictException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.model.Member;
+import com.example.backend.model.Role;
 import com.example.backend.repository.MemberRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class MemberServiceImpl implements MemberService {
@@ -52,9 +54,19 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    public Member getMemberByMemberId(String memberId) {
+        return memberRepository.findByMemberIdIgnoreCase(memberId)
+                .orElseThrow(() -> new ResourceNotFoundException("Member not found with memberId: " + memberId));
+    }
+
+    @Override
     public Member createMember(Member member) {
         if (memberRepository.existsByMemberId(member.getMemberId())) {
             throw new ConflictException("Member ID already exists");
+        }
+
+        if (member.getRoles() == null || member.getRoles().isEmpty()) {
+            member.setRoles(Set.of(Role.AUDITOR));
         }
 
         validateActiveDates(member);
@@ -79,6 +91,7 @@ public class MemberServiceImpl implements MemberService {
         existingMember.setActiveFrom(member.getActiveFrom());
         existingMember.setActiveTill(member.getActiveTill());
         existingMember.setStatus(member.getStatus());
+        existingMember.setRoles(member.getRoles());
 
         return memberRepository.save(existingMember);
     }
