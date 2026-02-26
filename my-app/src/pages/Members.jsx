@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataGrid } from '@mui/x-data-grid';
-import { getCurrentUserRoles, isAuthenticated } from '../utils/auth';
+import { getCurrentUserProfile, getCurrentUserRoles, isAuthenticated } from '../utils/auth';
 import { useMembers } from '../hooks/useMembers';
 import { formatDate } from '../utils/date';
-import { hasPermission, PERMISSIONS } from '../utils/rbac';
+import { hasPermission, isSuperAdminUser, PERMISSIONS } from '../utils/rbac';
 import Navbar from '../components/Navbar';
 import './Members.css';
 
@@ -22,6 +22,7 @@ function Members() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [infoMessage, setInfoMessage] = useState('');
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 5 });
   
   // Form state
@@ -36,6 +37,8 @@ function Members() {
   const navigate = useNavigate();
   const authenticated = isAuthenticated();
   const currentUserRoles = getCurrentUserRoles();
+  const currentUserProfile = getCurrentUserProfile();
+  const superAdmin = isSuperAdminUser(currentUserProfile.memberId);
 
   const canCreateMember = hasPermission(currentUserRoles, PERMISSIONS.MEMBER_CREATE);
   const canUpdateMember = hasPermission(currentUserRoles, PERMISSIONS.MEMBER_UPDATE);
@@ -129,8 +132,15 @@ function Members() {
 
   const handleToggleStatus = useCallback(async (member) => {
     if (!canToggleStatus) return;
+
+    if (isSuperAdminUser(member.memberId) && !superAdmin) {
+      setInfoMessage('Only Super Admin (B2B-001) can enable or disable Super Admin status.');
+      return;
+    }
+
+    setInfoMessage('');
     await toggleMemberStatus(member);
-  }, [canToggleStatus, toggleMemberStatus]);
+  }, [canToggleStatus, superAdmin, toggleMemberStatus]);
 
   const columns = useMemo(
     () => [
@@ -160,12 +170,15 @@ function Members() {
         filterable: false,
         renderCell: (params) => {
           const isActive = Boolean(params.row.status);
+          const isSuperAdminRow = isSuperAdminUser(params.row.memberId);
+          const statusToggleBlocked = isSuperAdminRow && !superAdmin;
+
           return (
             <button
               type="button"
               onClick={() => handleToggleStatus(params.row)}
               className={`btn-status ${isActive ? 'btn-status-disable' : 'btn-status-enable'}`}
-              disabled={loading || !canToggleStatus}
+              disabled={loading || !canToggleStatus || statusToggleBlocked}
             >
               {isActive ? 'Disable' : 'Enable'}
             </button>
@@ -229,6 +242,7 @@ function Members() {
       handleEdit,
       handleToggleStatus,
       loading,
+      superAdmin,
     ]
   );
 
@@ -238,6 +252,7 @@ function Members() {
 
       <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         {error && <div className="alert alert-error">{error}</div>}
+        {infoMessage && <div className="alert alert-error">{infoMessage}</div>}
 
         <div className="members-content">
         <div className="toolbar">

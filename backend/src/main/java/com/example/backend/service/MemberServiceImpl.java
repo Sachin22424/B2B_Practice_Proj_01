@@ -71,6 +71,10 @@ public class MemberServiceImpl implements MemberService {
 
         validateActiveDates(member);
 
+        if (!isCurrentDateInActiveRange(member.getActiveFrom(), member.getActiveTill())) {
+            member.setStatus(false);
+        }
+
         return memberRepository.save(member);
     }
 
@@ -118,5 +122,10 @@ public class MemberServiceImpl implements MemberService {
         if (member.getActiveTill().isBefore(member.getActiveFrom())) {
             throw new BadRequestException("Active till date must be greater than or equal to active from date");
         }
+    }
+
+    private boolean isCurrentDateInActiveRange(LocalDate activeFrom, LocalDate activeTill) {
+        LocalDate today = LocalDate.now();
+        return !today.isBefore(activeFrom) && !today.isAfter(activeTill);
     }
 }

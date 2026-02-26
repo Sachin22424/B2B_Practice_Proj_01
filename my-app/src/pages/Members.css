@@ -504,7 +504,15 @@
   }
 
   .action-buttons {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    padding: 6px 10px;
   }
 
   .pagination {
